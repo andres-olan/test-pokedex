@@ -1,75 +1,72 @@
-import { useContext, useEffect, useState } from "react";
-import Navbar from "../components/Navbar";
+import Container from '@material-ui/core/Container';
+import Grid from '@material-ui/core/Grid';
+import InputRadio from '../components/InputRadio';
+import Table from '../components/Table';
+import { useEffect } from 'react';
 import Axios from 'axios';
-import Thumbnail from "../components/Thumbnail";
-import Context from '../components/Context';
-import { Redirect } from 'react-router-dom'
+import { useState } from 'react';
 
 function Home() {
-    const [pokedex, setPokedex] = useState([]);
-    const [pokemon, setPokemon] = useState([]);
-    const [redirect,setRedirect] = useState(false);
-    const context = useContext(Context);
+    const columnas = [
+        {field:'idcupon',headerName:'ID'},
+        {field:'codigocupon',headerName:'Codigo'},
+        {field:'porcentaje',headerName:'% Descuento'},
+        {field:'fechadesde',headerName:'Inicia'},
+        {field:'fechahasta',headerName:'Termina'},
+        {field:'nombrestatus',headerName:'Estado'}
+    ];
+
+    const [filas, setFilas] = useState([]);
+    const [filasFiltro, setFilasFiltro] = useState([]);
 
     useEffect(() => {
-        Axios.get('https://pokeapi.co/api/v2/pokedex/1/')
+        getCupons();
+    },[]);
+
+    async function getCupons() {
+        const res = await Axios.post('http://35.188.155.248/bk_getCupones')
             .then((response) => {
-                setPokedex(response.data.pokemon_entries)
-            })
-    },[])
-
-    useEffect(() => {
-        const pokemonList = [];
-
-        if(pokedex.length > 0)
-        {
-            pokedex.map((pokedexList,keyPokedexList) => {
-                if(keyPokedexList < 100)
-                {
-                    Axios.get('https://pokeapi.co/api/v2/pokemon/'+pokedexList.entry_number+'/')
-                        .then((response) => {
-                            pokemonList.push(response.data)
-                        })
-                }
-            })
-        }
+                return response.data.resultado;
+            });
         
-        setTimeout(() => {
-            const order = pokemonList.sort((a, b) => a['order'] - b['order']);
+        setFilas(res);
+        setFilasFiltro(res);
+    }
 
-            setPokemon(order)
-        },1000)
-    },[pokedex])
+    const [status,setStatus] = useState('')
 
-    function clickPokemon(data) {
-        context.setContext(data);
-        setRedirect(true);
+    function changeRadio(e) {
+        setStatus(e.target.value)
+
+        const newFilas = [];
+        const prevFilas = filasFiltro;
+
+        prevFilas.map(fila => {
+            if(e.target.value === fila.nombrestatus)
+            {
+                return newFilas.push(fila)
+            }
+            else if(e.target.value === '')
+            {
+                return newFilas.push(fila);
+            }
+        })
+
+        setFilas(newFilas)
     }
 
     return(
-        redirect === false
-        ?
-        <div>
-            <Navbar />
-            <div className='container'>
-                <div className='row'>
-                    {
-                        pokemon.length > 0
-                        ?
-                        pokemon.map((item,keyItem) => {
-                            return(
-                                <div className='col-2' key={keyItem+1} onClick={() => {clickPokemon(item.id)}}>
-                                    <Thumbnail data={item}  />
-                                </div>
-                            )
-                        })
-                        : null
-                    }
-                </div>
-            </div>
-        </div>
-        : 
-        <Redirect to='/pokemon'/>
+        <Container maxWidth={'lg'} style={{marginTop:40}}>
+            <h1>Lista de Cupones</h1>
+            <Grid container>
+                <Grid item lg={2}>
+                    <InputRadio value={status} onChange={changeRadio}/>
+                </Grid>
+                <Grid item lg={10}>
+                    <Table columns={columnas} rows={filas}/>
+                </Grid>
+            </Grid>
+        </Container>
     )
 }
 
